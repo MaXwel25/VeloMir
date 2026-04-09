@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/miAppendFacultet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Добавить факультет " />
+    <item
+        android:id="@+id/miUpdateFacultet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Изменить факультет" />
+    <item
+        android:id="@+id/miDeleteFacultet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Удалить факультет" />
+    <item
+        android:id="@+id/miAppendGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Добавить группу" />
+    <item
+        android:id="@+id/miUpdateGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Изменить группу" />
+    <item
+        android:id="@+id/miDeleteGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Удалить группу" />
+</menu>
