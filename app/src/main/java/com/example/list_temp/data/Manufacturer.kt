@@ -1,10 +1,24 @@
-// data/Manufacturer.kt
 package com.example.list_temp.data
 
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
 import java.util.UUID
 
+@Entity(
+    tableName = "manufacturers",
+    foreignKeys = [
+        ForeignKey(
+            entity = BikeType::class,
+            parentColumns = ["id"],
+            childColumns = ["bikeTypeId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class Manufacturer(
-    val id: UUID = UUID.randomUUID(),
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
     var name: String = "",
-    var bikeTypeID: UUID? = null // Связь с типом велосипеда
+    var bikeTypeId: String = ""  // внешний ключ
 )

@@ -1,9 +1,13 @@
 // data/BikeType.kt
 package com.example.list_temp.data
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import java.util.UUID
 
+@Entity(tableName = "bike_types")
 data class BikeType(
-    val id: UUID = UUID.randomUUID(),
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
     var name: String = ""
 )
