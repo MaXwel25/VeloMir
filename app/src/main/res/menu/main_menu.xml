@@ -2,16 +2,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- Пункты для типов велосипедов -->
     <item
         android:id="@+id/miAppendBikeType"
-        android:title="Добавить тип велосипеда" />
+        android:title="Добавить тип" />
     <item
         android:id="@+id/miUpdateBikeType"
-        android:title="Изменить тип велосипеда" />
+        android:title="Изменить тип" />
     <item
         android:id="@+id/miDeleteBikeType"
-        android:title="Удалить тип велосипеда" />
+        android:title="Удалить тип" />
 
+    <!-- Пункты для производителей -->
     <item
         android:id="@+id/miAppendManufacturer"
         android:title="Добавить производителя" />
@@ -21,5 +23,13 @@
     <item
         android:id="@+id/miDeleteManufacturer"
         android:title="Удалить производителя" />
+
+    <!-- Пункты синхронизации -->
+    <item
+        android:id="@+id/miSyncPush"
+        android:title="Отправить на сервер" />
+    <item
+        android:id="@+id/miSyncPull"
+        android:title="Загрузить с сервера" />
 
 </menu>

@@ -1,50 +1,40 @@
 package com.example.list_temp.fragments
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.list_temp.data.BikeType
-import com.example.list_temp.data.ListOfBikeType
-import com.example.list_temp.repository.AppRepository
+import com.example.list_temp.repository.VeloRepository
+import kotlinx.coroutines.launch
 
-class BikeTypeViewModel : ViewModel() {
-    var bikeTypeList: MutableLiveData<ListOfBikeType?> = MutableLiveData()
-    private var _bikeType : BikeType? = null
-    val bikeType
-        get()=_bikeType
+class BikeTypeViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val bikeTypeListObserver = Observer<ListOfBikeType?>{
-            list ->
-        bikeTypeList.postValue(list)
+    private val repository = VeloRepository(application)
+    val allBikeTypes: LiveData<List<BikeType>> = repository.getAllBikeTypes()
+
+    private val _currentBikeType = MutableLiveData<BikeType?>()
+    val currentBikeType: LiveData<BikeType?> = _currentBikeType
+
+    fun setCurrentBikeType(type: BikeType) {
+        _currentBikeType.value = type
     }
 
-    init {
-        AppRepository.getInstance().listOfBikeType.observeForever(bikeTypeListObserver)
-        AppRepository.getInstance().bikeType.observeForever{
-            _bikeType=it
+    fun addBikeType(name: String) = viewModelScope.launch {
+        val type = BikeType(name = name)
+        repository.insertBikeType(type)
+    }
+
+    fun updateBikeType(type: BikeType, newName: String) = viewModelScope.launch {
+        type.name = newName
+        repository.updateBikeType(type)
+    }
+
+    fun deleteBikeType(type: BikeType) = viewModelScope.launch {
+        repository.deleteBikeType(type)
+        if (_currentBikeType.value?.id == type.id) {
+            _currentBikeType.value = null
         }
-    }
-
-    fun deleteBikeType(){
-        if (bikeType!=null)
-            AppRepository.getInstance().deleteBikeType(bikeType!!)
-    }
-
-    fun appendBikeType(name : String){
-        val bikeType= BikeType()
-        bikeType.name=name
-        AppRepository.getInstance().updateBikeType(bikeType)
-    }
-
-
-    fun updateBikeType(name : String){
-        if (_bikeType!=null){
-            _bikeType!!.name=name
-            AppRepository.getInstance().updateBikeType(_bikeType!!)
-        }
-    }
-
-    fun setCurrentBikeType(bikeType: BikeType){
-        AppRepository.getInstance().setCurrentBikeType(bikeType)
     }
 }

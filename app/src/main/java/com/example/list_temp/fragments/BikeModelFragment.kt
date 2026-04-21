@@ -32,55 +32,66 @@ import kotlinx.coroutines.launch
 class BikeModelFragment : Fragment() {
 
     companion object {
-        private lateinit var manufacturer: Manufacturer
+        private const val ARG_MANUFACTURER = "manufacturer"
         fun newInstance(manufacturer: Manufacturer): BikeModelFragment {
-            this.manufacturer = manufacturer
-            return BikeModelFragment()
+            return BikeModelFragment().apply {
+                arguments = Bundle().apply {
+                    putString("man_id", manufacturer.id)
+                    putString("man_name", manufacturer.name)
+                }
+            }
         }
     }
 
     private lateinit var viewModel: BikeModelViewModel
-    private lateinit var _binding: FragmentBikeModelBinding
-    val binding get() = _binding
+    private lateinit var binding: FragmentBikeModelBinding
+    private lateinit var manufacturer: Manufacturer
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentBikeModelBinding.inflate(inflater, container, false)
-        binding.rvBikeModel.layoutManager =
-            LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val id = arguments?.getString("man_id") ?: ""
+        val name = arguments?.getString("man_name") ?: ""
+        manufacturer = Manufacturer(id = id, name = name, bikeTypeId = "")
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        binding = FragmentBikeModelBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this).get(BikeModelViewModel::class.java)
-        viewModel.initManufacturer(manufacturer)
-        viewModel.bikeModelList.observe(viewLifecycleOwner) {
-            binding.rvBikeModel.adapter = BikeModelAdapter(it)
+
+        val factory = ViewModelProvider.AndroidViewModelFactory.getInstance(requireActivity().application)
+        viewModel = ViewModelProvider(this, factory).get(BikeModelViewModel::class.java)
+        viewModel.setCurrentManufacturer(manufacturer)
+
+        binding.rvBikeModel.layoutManager = LinearLayoutManager(context)
+
+        viewModel.models.observe(viewLifecycleOwner) { models ->
+            binding.rvBikeModel.adapter = BikeModelAdapter(models)
         }
+
         binding.fabAppendBikeModel.setOnClickListener {
-            editBikeModel(BikeModel().apply { manufacturerID = viewModel.manufacturer.id })
+            editBikeModel(null)
         }
+
+        (requireActivity() as MainActivityCallbacks).newTitle("Модели ${manufacturer.name}")
     }
 
-    private fun deleteDialog() {
+    private fun deleteDialog(model: BikeModel) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Удаление!")
-            .setMessage("Вы действительно хотите удалить модель ${viewModel.bikeModel?.name ?: ""}?")
-            .setPositiveButton("ДА") { _, _ ->
-                viewModel.deleteBikeModel()
-            }
-            .setNegativeButton("НЕТ", null)
-            .setCancelable(true)
-            .create()
+            .setTitle("Удаление")
+            .setMessage("Удалить модель \"${model.name}\"?")
+            .setPositiveButton("Да") { _, _ -> viewModel.deleteBikeModel(model) }
+            .setNegativeButton("Нет", null)
             .show()
     }
 
-    private fun editBikeModel(model: BikeModel) {
+    private fun editBikeModel(model: BikeModel?) {
+        // используем BikeModelInputFragment для ввода
+        val fragment = BikeModelInputFragment.newInstance(model ?: BikeModel())
         (requireActivity() as MainActivityCallbacks).showFragment(NamesOfFragment.BIKE_MODEL_INPUT, model)
-        (requireActivity() as MainActivityCallbacks).newTitle("Производитель ${viewModel.manufacturer.name}")
     }
 
     private inner class BikeModelAdapter(private val items: List<BikeModel>) :
@@ -94,18 +105,12 @@ class BikeModelFragment : Fragment() {
         override fun getItemCount(): Int = items.size
 
         override fun onBindViewHolder(holder: ItemHolder, position: Int) {
-            holder.bind(viewModel.bikeModelList.value!![position])
+            holder.bind(items[position])
         }
 
         private var lastView: View? = null
-        private fun updateCurrentView(view: View) {
-            val ll = lastView?.findViewById<LinearLayout>(R.id.llBikeModelButtons)
-            ll?.visibility = View.INVISIBLE
-            ll?.layoutParams = ll?.layoutParams.apply { this?.width = 1 }
-            val ib = lastView?.findViewById<ImageButton>(R.id.ibCall)
-            ib?.visibility = View.INVISIBLE
-            ib?.layoutParams = ib?.layoutParams.apply { this?.width = 1 }
 
+        private fun updateCurrentView(view: View) {
             lastView?.findViewById<ConstraintLayout>(R.id.clBikeModel)?.setBackgroundColor(
                 ContextCompat.getColor(requireContext(), R.color.white)
             )
@@ -116,66 +121,62 @@ class BikeModelFragment : Fragment() {
         }
 
         private inner class ItemHolder(view: View) : RecyclerView.ViewHolder(view) {
-
             private lateinit var bikeModel: BikeModel
 
-            fun bind(bikeModel: BikeModel) {
-                this.bikeModel = bikeModel
-                if (bikeModel == viewModel.bikeModel)
-                    updateCurrentView(itemView)
+            fun bind(model: BikeModel) {
+                this.bikeModel = model
                 val tv = itemView.findViewById<TextView>(R.id.tvBikeModelName)
-                tv.text = bikeModel.name
-                val cl = itemView.findViewById<ConstraintLayout>(R.id.clBikeModel)
-                cl.setOnClickListener {
-                    viewModel.setCurrentBikeModel(bikeModel)
+                tv.text = model.name
+
+                if (viewModel.currentBikeModel.value?.id == model.id) {
                     updateCurrentView(itemView)
-                }
-                itemView.findViewById<ImageButton>(R.id.ibEditBikeModel).setOnClickListener {
-                    editBikeModel(bikeModel)
-                }
-                itemView.findViewById<ImageButton>(R.id.ibDeleteBikeModel).setOnClickListener {
-                    deleteDialog()
+                } else {
+                    itemView.findViewById<ConstraintLayout>(R.id.clBikeModel)
+                        .setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
                 }
 
-                val llb = itemView.findViewById<LinearLayout>(R.id.llBikeModelButtons)
-                llb.visibility = View.INVISIBLE
-                llb?.layoutParams = llb?.layoutParams.apply { this?.width = 1 }
-                val ib = itemView.findViewById<ImageButton>(R.id.ibCall)
-                ib.visibility = View.INVISIBLE
-                cl.setOnLongClickListener {
-                    cl.callOnClick()
-                    llb.visibility = View.VISIBLE
-                    if (bikeModel.phone.isNotBlank())
-                        ib.visibility = View.VISIBLE
+                itemView.setOnClickListener {
+                    viewModel.setCurrentBikeModel(model)
+                    updateCurrentView(itemView)
+                }
+
+                itemView.findViewById<ImageButton>(R.id.ibEditBikeModel).setOnClickListener {
+                    editBikeModel(model)
+                }
+                itemView.findViewById<ImageButton>(R.id.ibDeleteBikeModel).setOnClickListener {
+                    deleteDialog(model)
+                }
+
+                val llButtons = itemView.findViewById<LinearLayout>(R.id.llBikeModelButtons)
+                val ibCall = itemView.findViewById<ImageButton>(R.id.ibCall)
+                llButtons.visibility = View.INVISIBLE
+                ibCall.visibility = View.INVISIBLE
+
+                itemView.setOnLongClickListener {
+                    it.callOnClick()
+                    llButtons.visibility = View.VISIBLE
+                    if (model.phone.isNotBlank()) ibCall.visibility = View.VISIBLE
+                    // анимация
                     MainScope().launch {
-                        val lp = llb?.layoutParams
-                        lp?.width = 1
-                        val ip = ib.layoutParams
-                        ip.width = 1
-                        while (lp?.width!! < 350) {
-                            lp?.width = lp?.width!! + 35
-                            llb?.layoutParams = lp
-                            ip.width = ip.width + 10
-                            if (ib.visibility == View.VISIBLE)
-                                ib.layoutParams = ip
+                        val lp = llButtons.layoutParams
+                        lp.width = 1
+                        var w = 1
+                        while (w < 350) {
+                            w += 35
+                            lp.width = w
+                            llButtons.layoutParams = lp
                             delay(50)
                         }
                     }
                     true
                 }
-                itemView.findViewById<ImageButton>(R.id.ibCall).setOnClickListener {
-                    if (ContextCompat.checkSelfPermission(
-                            requireContext(),
-                            Manifest.permission.CALL_PHONE
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${bikeModel.phone}"))
-                        startActivity(intent)
+
+                ibCall.setOnClickListener {
+                    if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CALL_PHONE)
+                        == PackageManager.PERMISSION_GRANTED) {
+                        startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:${model.phone}")))
                     } else {
-                        ActivityCompat.requestPermissions(
-                            requireActivity(),
-                            arrayOf(Manifest.permission.CALL_PHONE), 2
-                        )
+                        ActivityCompat.requestPermissions(requireActivity(), arrayOf(Manifest.permission.CALL_PHONE), 2)
                     }
                 }
             }

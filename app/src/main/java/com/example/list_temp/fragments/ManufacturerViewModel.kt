@@ -1,64 +1,53 @@
 package com.example.list_temp.fragments
 
-import android.util.Log
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import com.example.list_temp.MyConsts.TAG
+import androidx.lifecycle.viewModelScope
 import com.example.list_temp.data.Manufacturer
-import com.example.list_temp.repository.AppRepository
+import com.example.list_temp.repository.VeloRepository
+import kotlinx.coroutines.launch
+import androidx.lifecycle.switchMap
 
-class ManufacturerViewModel : ViewModel() {
+class ManufacturerViewModel(application: Application) : AndroidViewModel(application) {
 
-    var manufacturerList: MutableLiveData<List<Manufacturer>> = MutableLiveData()
-    private var _manufacturer: Manufacturer? = null
-    val manufacturer get() = _manufacturer
+    private val repository = VeloRepository(application)
 
-    init {
-        AppRepository.getInstance().listOfManufacturer.observeForever {
-            manufacturerList.postValue(AppRepository.getInstance().bikeTypeManufacturers)
-        }
+    private val _currentBikeTypeId = MutableLiveData<String?>()
+    val currentBikeTypeId: LiveData<String?> = _currentBikeTypeId
 
-        AppRepository.getInstance().manufacturer.observeForever {
-            _manufacturer = it
-            Log.d(TAG, "ManufacturerViewModel Текущий производитель $it")
-        }
+    private val _currentManufacturer = MutableLiveData<Manufacturer?>()
+    val currentManufacturer: LiveData<Manufacturer?> = _currentManufacturer
 
-        AppRepository.getInstance().bikeType.observeForever {
-            manufacturerList.postValue(AppRepository.getInstance().bikeTypeManufacturers)
-        }
+    // Список производителей для текущего типа (будет обновляться при изменении currentBikeTypeId)
+    val manufacturers: LiveData<List<Manufacturer>> = _currentBikeTypeId.switchMap { typeId ->
+        typeId?.let { repository.getManufacturersByType(it) } ?: MutableLiveData(emptyList())
     }
 
-    fun deleteManufacturer() {
-        if (manufacturer != null)
-            AppRepository.getInstance().deleteManufacturer(manufacturer!!)
-    }
-
-    fun appendManufacturer(name: String) {
-        val manufacturer = Manufacturer()
-        manufacturer.name = name
-        manufacturer.bikeTypeID = bikeType?.id
-        AppRepository.getInstance().updateManufacturer(manufacturer)
-    }
-
-    fun updateManufacturer(name: String) {
-        if (_manufacturer != null) {
-            _manufacturer!!.name = name
-            AppRepository.getInstance().updateManufacturer(_manufacturer!!)
-        }
-    }
-
-    fun setCurrentManufacturer(position: Int) {
-        if ((manufacturerList.value?.size ?: 0) > position)
-            manufacturerList.value?.let { AppRepository.getInstance().setCurrentManufacturer(it[position]) }
+    fun setCurrentBikeTypeId(typeId: String) {
+        _currentBikeTypeId.value = typeId
     }
 
     fun setCurrentManufacturer(manufacturer: Manufacturer) {
-        AppRepository.getInstance().setCurrentManufacturer(manufacturer)
+        _currentManufacturer.value = manufacturer
     }
 
-    val getManufacturerListPosition
-        get() = manufacturerList.value?.indexOfFirst { it.id == manufacturer?.id } ?: -1
+    fun addManufacturer(name: String) = viewModelScope.launch {
+        val typeId = _currentBikeTypeId.value ?: return@launch
+        val manufacturer = Manufacturer(name = name, bikeTypeId = typeId)
+        repository.insertManufacturer(manufacturer)
+    }
 
-    val bikeType
-        get() = AppRepository.getInstance().bikeType.value
+    fun updateManufacturer(manufacturer: Manufacturer, newName: String) = viewModelScope.launch {
+        manufacturer.name = newName
+        repository.updateManufacturer(manufacturer)
+    }
+
+    fun deleteManufacturer(manufacturer: Manufacturer) = viewModelScope.launch {
+        repository.deleteManufacturer(manufacturer)
+        if (_currentManufacturer.value?.id == manufacturer.id) {
+            _currentManufacturer.value = null
+        }
+    }
 }

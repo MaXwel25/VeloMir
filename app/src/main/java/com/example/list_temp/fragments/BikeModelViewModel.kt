@@ -1,51 +1,54 @@
 package com.example.list_temp.fragments
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.list_temp.data.BikeModel
 import com.example.list_temp.data.Manufacturer
-import com.example.list_temp.repository.AppRepository
+import com.example.list_temp.repository.VeloRepository
+import kotlinx.coroutines.launch
+import androidx.lifecycle.switchMap
 
-class BikeModelViewModel : ViewModel() {
-    var bikeModelList: MutableLiveData<List<BikeModel>> = MutableLiveData()
+class BikeModelViewModel(application: Application) : AndroidViewModel(application) {
 
-    private var _bikeModel: BikeModel? = null
-    val bikeModel get() = _bikeModel
+    private val repository = VeloRepository(application)
 
-    lateinit var manufacturer: Manufacturer
+    private val _currentManufacturer = MutableLiveData<Manufacturer?>()
+    val currentManufacturer: LiveData<Manufacturer?> = _currentManufacturer
 
-    fun initManufacturer(manufacturer: Manufacturer) {
-        this.manufacturer = manufacturer
-        AppRepository.getInstance().listOfBikeModel.observeForever {
-            bikeModelList.postValue(AppRepository.getInstance().getManufacturerBikeModels(manufacturer.id))
-        }
-        AppRepository.getInstance().bikeModel.observeForever {
-            _bikeModel = it
-        }
+    private val _currentBikeModel = MutableLiveData<BikeModel?>()
+    val currentBikeModel: LiveData<BikeModel?> = _currentBikeModel
+
+    val models: LiveData<List<BikeModel>> = _currentManufacturer.switchMap { man ->
+        man?.let { repository.getModelsByManufacturer(it.id) } ?: MutableLiveData(emptyList())
     }
 
-    fun deleteBikeModel() {
-        if (bikeModel != null)
-            AppRepository.getInstance().deleteBikeModel(bikeModel!!)
-    }
-
-    fun appendBikeModel(name: String, phone: String) {
-        val model = BikeModel()
-        model.name = name
-        model.phone = phone
-        model.manufacturerID = manufacturer.id
-        AppRepository.getInstance().updateBikeModel(model)
-    }
-
-    fun updateBikeModel(name: String, phone: String) {
-        if (_bikeModel != null) {
-            _bikeModel!!.name = name
-            _bikeModel!!.phone = phone
-            AppRepository.getInstance().updateBikeModel(_bikeModel!!)
-        }
+    fun setCurrentManufacturer(manufacturer: Manufacturer) {
+        _currentManufacturer.value = manufacturer
     }
 
     fun setCurrentBikeModel(model: BikeModel) {
-        AppRepository.getInstance().setCurrentBikeModel(model)
+        _currentBikeModel.value = model
+    }
+
+    fun addBikeModel(name: String, phone: String) = viewModelScope.launch {
+        val man = _currentManufacturer.value ?: return@launch
+        val model = BikeModel(name = name, phone = phone, manufacturerId = man.id)
+        repository.insertModel(model)
+    }
+
+    fun updateBikeModel(model: BikeModel, newName: String, newPhone: String) = viewModelScope.launch {
+        model.name = newName
+        model.phone = newPhone
+        repository.updateModel(model)
+    }
+
+    fun deleteBikeModel(model: BikeModel) = viewModelScope.launch {
+        repository.deleteModel(model)
+        if (_currentBikeModel.value?.id == model.id) {
+            _currentBikeModel.value = null
+        }
     }
 }

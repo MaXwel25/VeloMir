@@ -1,5 +1,5 @@
-package com.example.list_temp.data
+//package com.example.list_temp.data
 
-data class ListOfBikeType(
-    var items : MutableList<BikeType> = mutableListOf()
-)
+//data class ListOfBikeType(
+//    var items : MutableList<BikeType> = mutableListOf()
+//)

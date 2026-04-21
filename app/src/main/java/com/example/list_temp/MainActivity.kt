@@ -1,41 +1,45 @@
 package com.example.list_temp
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.activity.addCallback
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.list_temp.data.BikeModel
+import com.example.list_temp.fragments.BikeModelInputFragment
 import com.example.list_temp.fragments.BikeTypeFragment
 import com.example.list_temp.fragments.ManufacturerFragment
-import com.example.list_temp.fragments.BikeModelInputFragment
 import com.example.list_temp.interfaces.MainActivityCallbacks
-import com.example.list_temp.repository.AppRepository
+import com.example.list_temp.sync.SyncResult
+import com.example.list_temp.sync.VeloSyncManager
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), MainActivityCallbacks {
+
     interface Edit {
         fun append()
         fun update()
         fun delete()
     }
 
+    private lateinit var syncManager: VeloSyncManager
+    private var currentBikeTypeId: String? = null  // ID выбранного типа велосипеда
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        onBackPressedDispatcher.addCallback(this /* lifecycle owner */) {
+        syncManager = VeloSyncManager(this)
+
+        onBackPressedDispatcher.addCallback(this) {
             if (supportFragmentManager.backStackEntryCount > 0) {
                 supportFragmentManager.popBackStack()
                 when (activeFragment) {
-                    NamesOfFragment.BIKE_TYPE -> {
-                        finish()
-                    }
-                    NamesOfFragment.MANUFACTURER -> {
-                        activeFragment = NamesOfFragment.BIKE_TYPE
-                    }
-                    NamesOfFragment.BIKE_MODEL_INPUT -> {
-                        activeFragment = NamesOfFragment.MANUFACTURER
-                    }
+                    NamesOfFragment.BIKE_TYPE -> finish()
+                    NamesOfFragment.MANUFACTURER -> activeFragment = NamesOfFragment.BIKE_TYPE
+                    NamesOfFragment.BIKE_MODEL_INPUT -> activeFragment = NamesOfFragment.MANUFACTURER
                     else -> {}
                 }
                 updateMenu(activeFragment)
@@ -43,7 +47,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
                 finish()
             }
         }
-        showFragment(activeFragment, null)
+
+        if (savedInstanceState == null) {
+            showFragment(NamesOfFragment.BIKE_TYPE, null)
+        }
     }
 
     var activeFragment: NamesOfFragment = NamesOfFragment.BIKE_TYPE
@@ -54,6 +61,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
     private var _miAppendManufacturer: MenuItem? = null
     private var _miUpdateManufacturer: MenuItem? = null
     private var _miDeleteManufacturer: MenuItem? = null
+    private var _miSyncPush: MenuItem? = null
+    private var _miSyncPull: MenuItem? = null
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
@@ -63,44 +72,48 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         _miAppendManufacturer = menu?.findItem(R.id.miAppendManufacturer)
         _miUpdateManufacturer = menu?.findItem(R.id.miUpdateManufacturer)
         _miDeleteManufacturer = menu?.findItem(R.id.miDeleteManufacturer)
+        _miSyncPush = menu?.findItem(R.id.miSyncPush)
+        _miSyncPull = menu?.findItem(R.id.miSyncPull)
         updateMenu(activeFragment)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.miAppendBikeType -> {
-                val fedit: Edit = BikeTypeFragment.getInstance()
-                fedit.append()
+            R.id.miAppendBikeType -> { getCurrentEditFragment()?.append(); true }
+            R.id.miUpdateBikeType -> { getCurrentEditFragment()?.update(); true }
+            R.id.miDeleteBikeType -> { getCurrentEditFragment()?.delete(); true }
+            R.id.miAppendManufacturer -> { getCurrentEditFragment()?.append(); true }
+            R.id.miUpdateManufacturer -> { getCurrentEditFragment()?.update(); true }
+            R.id.miDeleteManufacturer -> { getCurrentEditFragment()?.delete(); true }
+            R.id.miSyncPush -> {
+                lifecycleScope.launch {
+                    val result = syncManager.pushAllToServer()
+                    showSyncResult(result)
+                }
                 true
             }
-            R.id.miUpdateBikeType -> {
-                val fedit: Edit = BikeTypeFragment.getInstance()
-                fedit.update()
-                true
-            }
-            R.id.miDeleteBikeType -> {
-                val fedit: Edit = BikeTypeFragment.getInstance()
-                fedit.delete()
-                true
-            }
-            R.id.miAppendManufacturer -> {
-                val fedit: Edit = ManufacturerFragment.getInstance()
-                fedit.append()
-                true
-            }
-            R.id.miUpdateManufacturer -> {
-                val fedit: Edit = ManufacturerFragment.getInstance()
-                fedit.update()
-                true
-            }
-            R.id.miDeleteManufacturer -> {
-                val fedit: Edit = ManufacturerFragment.getInstance()
-                fedit.delete()
+            R.id.miSyncPull -> {
+                lifecycleScope.launch {
+                    val result = syncManager.pullAllFromServer()
+                    showSyncResult(result)
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun getCurrentEditFragment(): Edit? {
+        return supportFragmentManager.findFragmentById(R.id.fcMain) as? Edit
+    }
+
+    private fun showSyncResult(result: SyncResult) {
+        val message = when (result) {
+            is SyncResult.Success -> result.message
+            is SyncResult.Error -> result.message
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     override fun newTitle(_title: String) {
@@ -108,45 +121,44 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
     }
 
     private fun updateMenu(fragmentType: NamesOfFragment) {
-        _miAppendBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
-        _miUpdateBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
-        _miDeleteBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
-        _miAppendManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
-        _miUpdateManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
-        _miDeleteManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
+        val isBikeType = fragmentType == NamesOfFragment.BIKE_TYPE
+        val isManufacturer = fragmentType == NamesOfFragment.MANUFACTURER
+
+        _miAppendBikeType?.isVisible = isBikeType
+        _miUpdateBikeType?.isVisible = isBikeType
+        _miDeleteBikeType?.isVisible = isBikeType
+        _miAppendManufacturer?.isVisible = isManufacturer
+        _miUpdateManufacturer?.isVisible = isManufacturer
+        _miDeleteManufacturer?.isVisible = isManufacturer
+        // Пункты синхронизации видны всегда
+        _miSyncPush?.isVisible = true
+        _miSyncPull?.isVisible = true
     }
 
     override fun showFragment(fragmentType: NamesOfFragment, bikeModel: BikeModel?) {
-        when (fragmentType) {
-            NamesOfFragment.BIKE_TYPE -> {
-                supportFragmentManager
-                    .beginTransaction()
-                    .replace(R.id.fcMain, BikeTypeFragment.getInstance())
-                    .addToBackStack("bikeType")
-                    .commit()
-            }
+        val fragment = when (fragmentType) {
+            NamesOfFragment.BIKE_TYPE -> BikeTypeFragment.getInstance()
             NamesOfFragment.MANUFACTURER -> {
-                supportFragmentManager
-                    .beginTransaction()
-                    .replace(R.id.fcMain, ManufacturerFragment.getInstance())
-                    .addToBackStack(null)
-                    .commit()
+                // Передаём ID типа велосипеда, который должен быть установлен ранее
+                ManufacturerFragment.newInstance(currentBikeTypeId ?: "")
             }
             NamesOfFragment.BIKE_MODEL_INPUT -> {
-                if (bikeModel != null)
-                    supportFragmentManager
-                        .beginTransaction()
-                        .replace(R.id.fcMain, BikeModelInputFragment.newInstance(bikeModel))
-                        .addToBackStack(null)
-                        .commit()
+                bikeModel?.let { BikeModelInputFragment.newInstance(it) }
+                    ?: BikeModelInputFragment.newInstance(BikeModel())
             }
         }
+
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fcMain, fragment)
+            .addToBackStack(null)
+            .commit()
+
         activeFragment = fragmentType
         updateMenu(fragmentType)
     }
 
-    override fun onDestroy() {
-        AppRepository.getInstance().saveData()
-        super.onDestroy()
+    // Вызывается из BikeTypeFragment при выборе типа велосипеда
+    fun setCurrentBikeTypeId(id: String) {
+        currentBikeTypeId = id
     }
 }

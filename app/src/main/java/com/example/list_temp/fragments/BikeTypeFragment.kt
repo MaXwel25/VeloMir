@@ -1,9 +1,7 @@
 package com.example.list_temp.fragments
 
 import android.content.Context
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,48 +10,48 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.list_temp.MainActivity
 import com.example.list_temp.NamesOfFragment
 import com.example.list_temp.R
-import com.example.list_temp.databinding.FragmentBikeTypeBinding
 import com.example.list_temp.data.BikeType
+import com.example.list_temp.databinding.FragmentBikeTypeBinding
 import com.example.list_temp.interfaces.MainActivityCallbacks
 
 class BikeTypeFragment : Fragment(), MainActivity.Edit {
 
     companion object {
-        private var INSTANCE: BikeTypeFragment? = null
-        fun getInstance(): BikeTypeFragment {
-            if (INSTANCE == null) INSTANCE = BikeTypeFragment()
-            return INSTANCE ?: throw Exception("BikeTypeFragment не создан")
-        }
+        fun getInstance(): BikeTypeFragment = BikeTypeFragment()
     }
 
     private lateinit var viewModel: BikeTypeViewModel
-    private lateinit var _binding: FragmentBikeTypeBinding
-    val binding get() = _binding
+    private lateinit var binding: FragmentBikeTypeBinding
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val ma = (requireActivity() as MainActivityCallbacks)
-        ma.newTitle("ТИПЫ ВЕЛОСИПЕДОВ")
-        _binding = FragmentBikeTypeBinding.inflate(inflater, container, false)
-        binding.rvBikeType.layoutManager =
-            LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
+        binding = FragmentBikeTypeBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this).get(BikeTypeViewModel::class.java)
-        viewModel.bikeTypeList.observe(viewLifecycleOwner) {
-            if (it != null)
-                binding.rvBikeType.adapter = BikeTypeAdapter(it.items)
+
+        // инициализация ViewModel с Application
+        val factory = ViewModelProvider.AndroidViewModelFactory.getInstance(requireActivity().application)
+        viewModel = ViewModelProvider(this, factory).get(BikeTypeViewModel::class.java)
+
+        binding.rvBikeType.layoutManager = LinearLayoutManager(context)
+
+        viewModel.allBikeTypes.observe(viewLifecycleOwner) { types ->
+            binding.rvBikeType.adapter = BikeTypeAdapter(types)
         }
+
+        (requireActivity() as MainActivityCallbacks).newTitle("ТИПЫ ВЕЛОСИПЕДОВ")
     }
 
     override fun append() {
@@ -61,49 +59,47 @@ class BikeTypeFragment : Fragment(), MainActivity.Edit {
     }
 
     override fun update() {
-        editBikeType(viewModel.bikeType?.name ?: "")
+        viewModel.currentBikeType.value?.let { current ->
+            editBikeType(current.name)
+        }
     }
 
     override fun delete() {
-        deleteDialog()
+        viewModel.currentBikeType.value?.let { current ->
+            AlertDialog.Builder(requireContext())
+                .setTitle("Удаление!")
+                .setMessage("Вы действительно хотите удалить тип велосипеда \"${current.name}\"?")
+                .setPositiveButton("ДА") { _, _ ->
+                    viewModel.deleteBikeType(current)
+                }
+                .setNegativeButton("НЕТ", null)
+                .show()
+        }
     }
 
-    private fun deleteDialog() {
+    private fun editBikeType(initialName: String = "") {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_string, null)
+        val tvInfo = dialogView.findViewById<TextView>(R.id.tvInfo)
+        val etString = dialogView.findViewById<EditText>(R.id.etString)
+        tvInfo.text = "Укажите название типа велосипеда"
+        etString.setText(initialName)
+
         AlertDialog.Builder(requireContext())
-            .setTitle("Удаление!")
-            .setMessage("Вы действительно хотите удалить тип велосипеда " +
-                    "${viewModel.bikeType?.name ?: ""}?")
-            .setPositiveButton("ДА") { _, _ ->
-                viewModel.deleteBikeType()
-            }
-            .setNegativeButton("НЕТ", null)
-            .setCancelable(true)
-            .create()
-            .show()
-    }
-
-    private fun editBikeType(typeName: String = "") {
-        val mDialogView = LayoutInflater.from(requireContext())
-            .inflate(R.layout.dialog_string, null)
-        val messageText = mDialogView.findViewById<TextView>(R.id.tvInfo)
-        val inputString = mDialogView.findViewById<EditText>(R.id.etString)
-        inputString.setText(typeName)
-        messageText.text = "Укажите название типа велосипеда"
-
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("ИЗМЕНЕНИЕ ДАННЫХ")
-            .setView(mDialogView)
-            .setPositiveButton("подтверждаю") { _, _ ->
-                if (inputString.text.isNotBlank()) {
-                    if (typeName.isBlank())
-                        viewModel.appendBikeType(inputString.text.toString())
-                    else
-                        viewModel.updateBikeType(inputString.text.toString())
+            .setTitle(if (initialName.isBlank()) "ДОБАВЛЕНИЕ" else "ИЗМЕНЕНИЕ")
+            .setView(dialogView)
+            .setPositiveButton("Подтвердить") { _, _ ->
+                val newName = etString.text.toString().trim()
+                if (newName.isNotBlank()) {
+                    if (initialName.isBlank()) {
+                        viewModel.addBikeType(newName)
+                    } else {
+                        viewModel.currentBikeType.value?.let { type ->
+                            viewModel.updateBikeType(type, newName)
+                        }
+                    }
                 }
             }
-            .setNegativeButton("отмена", null)
-            .setCancelable(true)
-            .create()
+            .setNegativeButton("Отмена", null)
             .show()
     }
 
@@ -118,10 +114,11 @@ class BikeTypeFragment : Fragment(), MainActivity.Edit {
         override fun getItemCount(): Int = items.size
 
         override fun onBindViewHolder(holder: ItemHolder, position: Int) {
-            holder.bind(viewModel.bikeTypeList.value!!.items[position])
+            holder.bind(items[position])
         }
 
         private var lastView: View? = null
+
         private fun updateCurrentView(view: View) {
             lastView?.findViewById<ConstraintLayout>(R.id.clBikeType)?.setBackgroundColor(
                 ContextCompat.getColor(requireContext(), R.color.white)
@@ -137,27 +134,35 @@ class BikeTypeFragment : Fragment(), MainActivity.Edit {
 
             fun bind(bikeType: BikeType) {
                 this.bikeType = bikeType
-                if (bikeType == viewModel.bikeType)
-                    updateCurrentView(itemView)
                 val tv = itemView.findViewById<TextView>(R.id.tvBikeType)
                 tv.text = bikeType.name
+
+                // Выделение текущего элемента
+                if (viewModel.currentBikeType.value?.id == bikeType.id) {
+                    updateCurrentView(itemView)
+                } else {
+                    itemView.findViewById<ConstraintLayout>(R.id.clBikeType)
+                        .setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white))
+                }
+
                 tv.setOnClickListener {
                     viewModel.setCurrentBikeType(bikeType)
                     updateCurrentView(itemView)
                 }
                 tv.setOnLongClickListener {
-                    tv.callOnClick()
-                    mainActivity?.showFragment(NamesOfFragment.MANUFACTURER)
+                    it.callOnClick()
+                    (requireActivity() as MainActivity).setCurrentBikeTypeId(bikeType.id)
+                    (requireActivity() as MainActivityCallbacks).showFragment(NamesOfFragment.MANUFACTURER)
                     true
                 }
             }
         }
     }
 
-    var mainActivity: MainActivityCallbacks? = null
     override fun onAttach(context: Context) {
-        mainActivity = (context as MainActivityCallbacks)
-        mainActivity?.newTitle("Типы велосипедов")
         super.onAttach(context)
+        (context as MainActivityCallbacks).newTitle("Типы велосипедов")
     }
+
+
 }
