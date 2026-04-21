@@ -6,12 +6,12 @@ import androidx.preference.PreferenceManager
 import com.example.list_temp.MyApplication
 import com.example.list_temp.MyConsts.TAG
 import com.example.list_temp.R
-import com.example.list_temp.data.Faculty
-import com.example.list_temp.data.Group
-import com.example.list_temp.data.ListOfFaculty
-import com.example.list_temp.data.ListOfGroup
-import com.example.list_temp.data.ListOfStudent
-import com.example.list_temp.data.Student
+import com.example.list_temp.data.BikeType
+import com.example.list_temp.data.ListOfBikeType
+import com.example.list_temp.data.ListOfManufacturer
+import com.example.list_temp.data.ListOfBikeModel
+import com.example.list_temp.data.Manufacturer
+import com.example.list_temp.data.BikeModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -20,210 +20,227 @@ import java.util.UUID
 
 class AppRepository {
 
-    companion object{
-        private var INSTANCE: AppRepository?=null
+    companion object {
+        private var INSTANCE: AppRepository? = null
 
-        fun getInstance(): AppRepository{
-            if(INSTANCE ==null){
+        fun getInstance(): AppRepository {
+            if (INSTANCE == null) {
                 INSTANCE = AppRepository()
             }
-            return INSTANCE ?:
-            throw IllegalStateException("Репозиторий не инициализирован")
+            return INSTANCE ?: throw IllegalStateException("Репозиторий не инициализирован")
         }
     }
 
-    var listOfFaculty: MutableLiveData<ListOfFaculty?> = MutableLiveData()
-    var faculty : MutableLiveData<Faculty> = MutableLiveData()
+    // Типы велосипедов
+    var listOfBikeType: MutableLiveData<ListOfBikeType?> = MutableLiveData()
+    var bikeType: MutableLiveData<BikeType> = MutableLiveData()
 
-    var listOfGroup: MutableLiveData<ListOfGroup?> = MutableLiveData()
-    var group : MutableLiveData<Group> = MutableLiveData()
+    // Производители
+    var listOfManufacturer: MutableLiveData<ListOfManufacturer?> = MutableLiveData()
+    var manufacturer: MutableLiveData<Manufacturer> = MutableLiveData()
 
-    var listOfStudent: MutableLiveData<ListOfStudent?> = MutableLiveData()
-    var student : MutableLiveData<Student> = MutableLiveData()
+    // Модели велосипедов
+    var listOfBikeModel: MutableLiveData<ListOfBikeModel?> = MutableLiveData()
+    var bikeModel: MutableLiveData<BikeModel> = MutableLiveData()
 
-    fun addFaculty(faculty: Faculty){
-        val listTmp = (listOfFaculty.value ?: ListOfFaculty()).apply {
-            items.add(faculty)
+    // === Работа с типами велосипедов ===
+    fun addBikeType(bikeType: BikeType) {
+        val listTmp = (listOfBikeType.value ?: ListOfBikeType()).apply {
+            items.add(bikeType)
         }
-        listOfFaculty.postValue(listTmp)
-        setCurrentFaculty(faculty)
+        listOfBikeType.postValue(listTmp)
+        setCurrentBikeType(bikeType)
     }
 
-    fun getFacultyPosition(faculty: Faculty):Int = listOfFaculty.value?.items?.indexOfFirst {
-        it.id==faculty.id} ?: -1
+    fun getBikeTypePosition(bikeType: BikeType): Int =
+        listOfBikeType.value?.items?.indexOfFirst { it.id == bikeType.id } ?: -1
 
-    fun getFacultyPosition()=getFacultyPosition(faculty.value?: Faculty())
+    fun getBikeTypePosition() = getBikeTypePosition(bikeType.value ?: BikeType())
 
-    fun setCurrentFaculty(position: Int){
-        if(listOfFaculty.value==null || position<0 ||
-            (listOfFaculty.value?.items?.size!!<=position))
+    fun setCurrentBikeType(position: Int) {
+        if (listOfBikeType.value == null || position < 0 ||
+            (listOfBikeType.value?.items?.size!! <= position)
+        )
             return
-        setCurrentFaculty(listOfFaculty.value?.items!![position])
+        setCurrentBikeType(listOfBikeType.value?.items!![position])
     }
-    fun setCurrentFaculty(_faculty:Faculty){
-        faculty.postValue(_faculty)
+
+    fun setCurrentBikeType(_bikeType: BikeType) {
+        bikeType.postValue(_bikeType)
     }
-    fun updateFaculty(faculty: Faculty){
-        val position = getFacultyPosition(faculty)
-        if (position < 0) addFaculty(faculty)
+
+    fun updateBikeType(bikeType: BikeType) {
+        val position = getBikeTypePosition(bikeType)
+        if (position < 0) addBikeType(bikeType)
         else {
-            val listTmp = listOfFaculty.value!!
-            listTmp.items[position]=faculty
-            listOfFaculty.postValue(listTmp)
+            val listTmp = listOfBikeType.value!!
+            listTmp.items[position] = bikeType
+            listOfBikeType.postValue(listTmp)
         }
     }
 
-    fun deleteFaculty(faculty: Faculty){
-        val listTmp = listOfFaculty.value!!
-        if(listTmp.items.remove(faculty)){
-            listOfFaculty.postValue(listTmp)
+    fun deleteBikeType(bikeType: BikeType) {
+        val listTmp = listOfBikeType.value!!
+        if (listTmp.items.remove(bikeType)) {
+            listOfBikeType.postValue(listTmp)
         }
-        setCurrentFaculty(0)
+        setCurrentBikeType(0)
     }
 
-    fun saveData(){
-        val context= MyApplication.context
+    // === Сохранение и загрузка данных ===
+    fun saveData() {
+        val context = MyApplication.context
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        sharedPreferences.edit().apply{
+        sharedPreferences.edit().apply {
             val gson = Gson()
-            val lst=listOfFaculty.value?.items ?: listOf<Faculty>()
-            val jsonString =gson.toJson(lst)
-            Log.d(TAG,"Сохранение $jsonString")
+            val lst = listOfBikeType.value?.items ?: listOf<BikeType>()
+            val jsonString = gson.toJson(lst)
+            Log.d(TAG, "Сохранение $jsonString")
             putString(context.getString(R.string.preference_key_faculty_list), jsonString)
-            putString(context.getString(R.string.preference_key_group_list), gson.toJson(listOfGroup.value?.items ?: listOf<Group>()))
-            putString(context.getString(R.string.preference_key_students_list), gson.toJson(listOfStudent.value?.items ?: listOf<Student>()))
+            putString(
+                context.getString(R.string.preference_key_group_list),
+                gson.toJson(listOfManufacturer.value?.items ?: listOf<Manufacturer>())
+            )
+            putString(
+                context.getString(R.string.preference_key_students_list),
+                gson.toJson(listOfBikeModel.value?.items ?: listOf<BikeModel>())
+            )
             apply()
         }
     }
-    fun loadData(){
-        val context= MyApplication.context
+
+    fun loadData() {
+        val context = MyApplication.context
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        sharedPreferences.apply{
-            val jsonString =getString(context.getString(R.string.preference_key_faculty_list),null)
-            if (jsonString!=null) {
+        sharedPreferences.apply {
+            val jsonString = getString(context.getString(R.string.preference_key_faculty_list), null)
+            if (jsonString != null) {
                 Log.d(TAG, "Чтение $jsonString")
-                val listType = object : TypeToken<List<Faculty>>() {}.type
-                val tempList = Gson().fromJson<List<Faculty>>(jsonString, listType)
-                val temp = ListOfFaculty()
+                val listType = object : TypeToken<List<BikeType>>() {}.type
+                val tempList = Gson().fromJson<List<BikeType>>(jsonString, listType)
+                val temp = ListOfBikeType()
                 temp.items = tempList.toMutableList()
                 Log.d(TAG, "Загрузка ${temp.toString()}")
-                listOfFaculty.postValue(temp)
-
+                listOfBikeType.postValue(temp)
             }
-            val jsonStringG =getString(context.getString(R.string.preference_key_group_list),null)
-            if (jsonStringG!=null) {
-                val listTypeG = object : TypeToken<List<Group>>() {}.type
-                val tempListG = Gson().fromJson<List<Group>>(jsonStringG, listTypeG)
-                val tempG = ListOfGroup()
+            val jsonStringG = getString(context.getString(R.string.preference_key_group_list), null)
+            if (jsonStringG != null) {
+                val listTypeG = object : TypeToken<List<Manufacturer>>() {}.type
+                val tempListG = Gson().fromJson<List<Manufacturer>>(jsonStringG, listTypeG)
+                val tempG = ListOfManufacturer()
                 tempG.items = tempListG.toMutableList()
-                listOfGroup.postValue(tempG)
-
+                listOfManufacturer.postValue(tempG)
             }
-            val jsonStringS =getString(context.getString(R.string.preference_key_students_list),null)
-            if (jsonStringS!=null) {
-                val listTypeS = object : TypeToken<List<Student>>() {}.type
-                val tempListS = Gson().fromJson<List<Student>>(jsonStringS, listTypeS)
-                val tempS = ListOfStudent()
+            val jsonStringS = getString(context.getString(R.string.preference_key_students_list), null)
+            if (jsonStringS != null) {
+                val listTypeS = object : TypeToken<List<BikeModel>>() {}.type
+                val tempListS = Gson().fromJson<List<BikeModel>>(jsonStringS, listTypeS)
+                val tempS = ListOfBikeModel()
                 tempS.items = tempListS.toMutableList()
-                listOfStudent.postValue(tempS)
-
+                listOfBikeModel.postValue(tempS)
             }
         }
     }
 
-    fun addGroup(group: Group){
-        val listTmp = (listOfGroup.value ?: ListOfGroup()).apply {
-            items.add(group)
+    // === Работа с производителями ===
+    fun addManufacturer(manufacturer: Manufacturer) {
+        val listTmp = (listOfManufacturer.value ?: ListOfManufacturer()).apply {
+            items.add(manufacturer)
         }
-        listOfGroup.postValue(listTmp)
-        setCurrentGroup(group)
+        listOfManufacturer.postValue(listTmp)
+        setCurrentManufacturer(manufacturer)
     }
 
-    fun getGroupPosition(group: Group):Int = listOfGroup.value?.items?.indexOfFirst {
-        it.id==group.id} ?:-1
-    
-    fun getGroupPosition()=getGroupPosition(group.value?: Group())
+    fun getManufacturerPosition(manufacturer: Manufacturer): Int =
+        listOfManufacturer.value?.items?.indexOfFirst { it.id == manufacturer.id } ?: -1
 
-    fun setCurrentGroup(position: Int){
-        if(listOfGroup.value==null || position<0 ||
-            (listOfGroup.value?.items?.size!!<=position))
+    fun getManufacturerPosition() = getManufacturerPosition(manufacturer.value ?: Manufacturer())
+
+    fun setCurrentManufacturer(position: Int) {
+        if (listOfManufacturer.value == null || position < 0 ||
+            (listOfManufacturer.value?.items?.size!! <= position)
+        )
             return
-        setCurrentGroup(listOfGroup.value?.items!![position])
+        setCurrentManufacturer(listOfManufacturer.value?.items!![position])
     }
 
-    fun setCurrentGroup (_group:Group){
-        group.postValue(_group)
+    fun setCurrentManufacturer(_manufacturer: Manufacturer) {
+        manufacturer.postValue(_manufacturer)
     }
 
-    fun updateGroup(group: Group){
-        val position = getGroupPosition(group)
-        if (position < 0) addGroup(group)
+    fun updateManufacturer(manufacturer: Manufacturer) {
+        val position = getManufacturerPosition(manufacturer)
+        if (position < 0) addManufacturer(manufacturer)
         else {
-            val listTmp = listOfGroup.value!!
-            listTmp.items[position]=group
-            listOfGroup.postValue(listTmp)
+            val listTmp = listOfManufacturer.value!!
+            listTmp.items[position] = manufacturer
+            listOfManufacturer.postValue(listTmp)
         }
     }
 
-    fun deleteGroup(group: Group){
-        val listTmp = listOfGroup.value ?: ListOfGroup()
-        if(listTmp.items.remove(group))
-            listOfGroup.postValue(listTmp)
-        setCurrentGroup(0)
+    fun deleteManufacturer(manufacturer: Manufacturer) {
+        val listTmp = listOfManufacturer.value ?: ListOfManufacturer()
+        if (listTmp.items.remove(manufacturer))
+            listOfManufacturer.postValue(listTmp)
+        setCurrentManufacturer(0)
     }
 
-    val facultyGroups
-      get()= listOfGroup.value?.items?.filter{
-          it.facultyID == (faculty.value?.id ?: 0)}?.sortedBy { it.name } ?: listOf()
+    val bikeTypeManufacturers
+        get() = listOfManufacturer.value?.items?.filter {
+            it.bikeTypeID == bikeType.value?.id
+        }?.sortedBy { it.name } ?: listOf()
 
-    fun getFacultyGroups(facultyID: UUID) =
-        (listOfGroup.value?.items?.filter{ it.facultyID == facultyID }?.sortedBy { it.name } ?: listOf())
+    fun getBikeTypeManufacturers(bikeTypeID: UUID) =
+        listOfManufacturer.value?.items?.filter { it.bikeTypeID == bikeTypeID }?.sortedBy { it.name } ?: listOf()
 
-
-    fun addStudent(student: Student){
-        val listTmp = (listOfStudent.value ?: ListOfStudent()).apply {
-            items.add(student)
+    // === Работа с моделями велосипедов ===
+    fun addBikeModel(bikeModel: BikeModel) {
+        val listTmp = (listOfBikeModel.value ?: ListOfBikeModel()).apply {
+            items.add(bikeModel)
         }
-        listOfStudent.postValue(listTmp)
-        setCurrentStudent(student)
+        listOfBikeModel.postValue(listTmp)
+        setCurrentBikeModel(bikeModel)
     }
 
-    fun getStudentPosition(student: Student):Int = listOfStudent.value?.items?.indexOfFirst {
-        it.id==student.id} ?:-1
+    fun getBikeModelPosition(bikeModel: BikeModel): Int =
+        listOfBikeModel.value?.items?.indexOfFirst { it.id == bikeModel.id } ?: -1
 
-    fun getStudentPosition()=getStudentPosition(student.value?: Student())
+    fun getBikeModelPosition() = getBikeModelPosition(bikeModel.value ?: BikeModel())
 
-    fun setCurrentStudent(position: Int){
-        if(listOfStudent.value==null || position<0 ||
-            (listOfStudent.value?.items?.size!!<=position))
+    fun setCurrentBikeModel(position: Int) {
+        if (listOfBikeModel.value == null || position < 0 ||
+            (listOfBikeModel.value?.items?.size!! <= position)
+        )
             return
-        setCurrentStudent(listOfStudent.value?.items!![position])
+        setCurrentBikeModel(listOfBikeModel.value?.items!![position])
     }
 
-    fun setCurrentStudent (_student:Student){
-        student.postValue(_student)
+    fun setCurrentBikeModel(_bikeModel: BikeModel) {
+        bikeModel.postValue(_bikeModel)
     }
 
-    fun updateStudent(student: Student){
-        val position = getStudentPosition(student)
-        if (position < 0) addStudent(student)
+    fun updateBikeModel(bikeModel: BikeModel) {
+        val position = getBikeModelPosition(bikeModel)
+        if (position < 0) addBikeModel(bikeModel)
         else {
-            val listTmp = listOfStudent.value!!
-            listTmp.items[position]=student
-            listOfStudent.postValue(listTmp)
+            val listTmp = listOfBikeModel.value!!
+            listTmp.items[position] = bikeModel
+            listOfBikeModel.postValue(listTmp)
         }
     }
 
-    fun deleteStudent(student: Student){
-        val listTmp = listOfStudent.value ?: ListOfStudent()
-        if(listTmp.items.remove(student)) listOfStudent.postValue(listTmp)
-        setCurrentStudent(0)
+    fun deleteBikeModel(bikeModel: BikeModel) {
+        val listTmp = listOfBikeModel.value ?: ListOfBikeModel()
+        if (listTmp.items.remove(bikeModel))
+            listOfBikeModel.postValue(listTmp)
+        setCurrentBikeModel(0)
     }
 
-    val groupStudents
-       get()= listOfStudent.value?.items?.filter {
-           it.groupID== (group.value?.id ?: 0) }?.sortedBy { it.shortName } ?: listOf()
+    val manufacturerBikeModels
+        get() = listOfBikeModel.value?.items?.filter {
+            it.manufacturerID == manufacturer.value?.id
+        }?.sortedBy { it.name } ?: listOf()
 
-    fun getGroupStudents(groupID: UUID) =
-        listOfStudent.value?.items?.filter { it.groupID == groupID }?.sortedBy {it.shortName } ?: listOf()
+    fun getManufacturerBikeModels(manufacturerID: UUID) =
+        listOfBikeModel.value?.items?.filter { it.manufacturerID == manufacturerID }?.sortedBy { it.name } ?: listOf()
 }

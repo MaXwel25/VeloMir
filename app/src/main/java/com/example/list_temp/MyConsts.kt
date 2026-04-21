@@ -5,5 +5,7 @@ object MyConsts {
 }
 
 enum class NamesOfFragment {
-        FACULTY, GROUP, STUDENT
+    BIKE_TYPE,
+    MANUFACTURER,
+    BIKE_MODEL_INPUT
 }

@@ -1,35 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/miAppendFacultet"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Добавить факультет " />
+        android:id="@+id/miAppendBikeType"
+        android:title="Добавить тип велосипеда" />
     <item
-        android:id="@+id/miUpdateFacultet"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Изменить факультет" />
+        android:id="@+id/miUpdateBikeType"
+        android:title="Изменить тип велосипеда" />
     <item
-        android:id="@+id/miDeleteFacultet"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Удалить факультет" />
+        android:id="@+id/miDeleteBikeType"
+        android:title="Удалить тип велосипеда" />
+
     <item
-        android:id="@+id/miAppendGroup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Добавить группу" />
+        android:id="@+id/miAppendManufacturer"
+        android:title="Добавить производителя" />
     <item
-        android:id="@+id/miUpdateGroup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Изменить группу" />
+        android:id="@+id/miUpdateManufacturer"
+        android:title="Изменить производителя" />
     <item
-        android:id="@+id/miDeleteGroup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="Удалить группу" />
+        android:id="@+id/miDeleteManufacturer"
+        android:title="Удалить производителя" />
+
 </menu>

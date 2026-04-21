@@ -5,12 +5,10 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.addCallback
-import androidx.core.view.GravityCompat
-import com.example.list_temp.data.Student
-import com.example.list_temp.fragments.FacultyFragment
-import com.example.list_temp.fragments.GroupFragment
-import com.example.list_temp.fragments.StudentInputFragment
-import com.example.list_temp.fragments.StudentsFragment
+import com.example.list_temp.data.BikeModel
+import com.example.list_temp.fragments.BikeTypeFragment
+import com.example.list_temp.fragments.ManufacturerFragment
+import com.example.list_temp.fragments.BikeModelInputFragment
 import com.example.list_temp.interfaces.MainActivityCallbacks
 import com.example.list_temp.repository.AppRepository
 
@@ -25,87 +23,79 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
         onBackPressedDispatcher.addCallback(this /* lifecycle owner */) {
             if (supportFragmentManager.backStackEntryCount > 0) {
-                                                                                                        /*
-                    val myFragment = supportFragmentManager.findFragmentByTag(SETTINGS_TAG)
-                    if (myFragment != null && myFragment.isVisible) {
-                        binding.activityMainToolbar.title=""
-                        checkPreference()
-                    }
-*/
                 supportFragmentManager.popBackStack()
-                when (activeFragment){
-                    NamesOfFragment.FACULTY ->{
+                when (activeFragment) {
+                    NamesOfFragment.BIKE_TYPE -> {
                         finish()
                     }
-                    NamesOfFragment.GROUP ->{
-                        activeFragment=NamesOfFragment.FACULTY
+                    NamesOfFragment.MANUFACTURER -> {
+                        activeFragment = NamesOfFragment.BIKE_TYPE
                     }
-                    NamesOfFragment.STUDENT ->{
-                        activeFragment=NamesOfFragment.GROUP
+                    NamesOfFragment.BIKE_MODEL_INPUT -> {
+                        activeFragment = NamesOfFragment.MANUFACTURER
                     }
                     else -> {}
                 }
                 updateMenu(activeFragment)
             } else {
-                   finish()
-                }
+                finish()
+            }
         }
-        showFragment(activeFragment,null)
+        showFragment(activeFragment, null)
     }
 
-    var activeFragment : NamesOfFragment=NamesOfFragment.FACULTY
+    var activeFragment: NamesOfFragment = NamesOfFragment.BIKE_TYPE
 
-    private  var  _miAppendFaculty: MenuItem? =null
-    private  var  _miUpdateFaculty: MenuItem? =null
-    private  var  _miDeleteFaculty: MenuItem? =null
-    private  var  _miAppendGroup: MenuItem? =null
-    private  var  _miUpdateGroup: MenuItem? =null
-    private  var  _miDeleteGroup: MenuItem? =null
+    private var _miAppendBikeType: MenuItem? = null
+    private var _miUpdateBikeType: MenuItem? = null
+    private var _miDeleteBikeType: MenuItem? = null
+    private var _miAppendManufacturer: MenuItem? = null
+    private var _miUpdateManufacturer: MenuItem? = null
+    private var _miDeleteManufacturer: MenuItem? = null
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
-        _miAppendFaculty = menu?.findItem(R.id.miAppendFacultet)
-        _miUpdateFaculty = menu?.findItem(R.id.miUpdateFacultet)
-        _miDeleteFaculty = menu?.findItem(R.id.miDeleteFacultet)
-        _miAppendGroup = menu?.findItem(R.id.miAppendGroup)
-        _miUpdateGroup = menu?.findItem(R.id.miUpdateGroup)
-        _miDeleteGroup = menu?.findItem(R.id.miDeleteGroup)
+        _miAppendBikeType = menu?.findItem(R.id.miAppendBikeType)
+        _miUpdateBikeType = menu?.findItem(R.id.miUpdateBikeType)
+        _miDeleteBikeType = menu?.findItem(R.id.miDeleteBikeType)
+        _miAppendManufacturer = menu?.findItem(R.id.miAppendManufacturer)
+        _miUpdateManufacturer = menu?.findItem(R.id.miUpdateManufacturer)
+        _miDeleteManufacturer = menu?.findItem(R.id.miDeleteManufacturer)
         updateMenu(activeFragment)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.miAppendFacultet -> {
-                val fedit: Edit = FacultyFragment.getInstance()
+            R.id.miAppendBikeType -> {
+                val fedit: Edit = BikeTypeFragment.getInstance()
                 fedit.append()
                 true
             }
-            R.id.miUpdateFacultet -> {
-                val fedit: Edit = FacultyFragment.getInstance()
+            R.id.miUpdateBikeType -> {
+                val fedit: Edit = BikeTypeFragment.getInstance()
                 fedit.update()
                 true
             }
-            R.id.miDeleteFacultet -> {
-                val fedit: Edit = FacultyFragment.getInstance()
+            R.id.miDeleteBikeType -> {
+                val fedit: Edit = BikeTypeFragment.getInstance()
                 fedit.delete()
                 true
             }
-            R.id.miAppendGroup -> {
-                val fedit: Edit = GroupFragment.getInstance()
+            R.id.miAppendManufacturer -> {
+                val fedit: Edit = ManufacturerFragment.getInstance()
                 fedit.append()
                 true
             }
-            R.id.miUpdateGroup -> {
-                val fedit: Edit = GroupFragment.getInstance()
+            R.id.miUpdateManufacturer -> {
+                val fedit: Edit = ManufacturerFragment.getInstance()
                 fedit.update()
                 true
             }
-            R.id.miDeleteGroup -> {
-                val fedit: Edit = GroupFragment.getInstance()
+            R.id.miDeleteManufacturer -> {
+                val fedit: Edit = ManufacturerFragment.getInstance()
                 fedit.delete()
                 true
             }
@@ -113,56 +103,45 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         }
     }
 
-                                                                                                        /*
-    override fun onResume() {
-        super.onResume()
-        showFaculty()
-    }
-*/
-
-    fun showFaculty() {
-        showFragment(NamesOfFragment.FACULTY)
-    }
-
     override fun newTitle(_title: String) {
-        title=_title
+        title = _title
     }
 
-    private fun updateMenu(fragmentType: NamesOfFragment){
-        _miAppendFaculty?.isVisible = fragmentType==NamesOfFragment.FACULTY
-        _miUpdateFaculty?.isVisible = fragmentType==NamesOfFragment.FACULTY
-        _miDeleteFaculty?.isVisible = fragmentType==NamesOfFragment.FACULTY
-        _miAppendGroup?.isVisible = fragmentType==NamesOfFragment.GROUP
-        _miUpdateGroup?.isVisible = fragmentType==NamesOfFragment.GROUP
-        _miDeleteGroup?.isVisible = fragmentType==NamesOfFragment.GROUP
+    private fun updateMenu(fragmentType: NamesOfFragment) {
+        _miAppendBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
+        _miUpdateBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
+        _miDeleteBikeType?.isVisible = fragmentType == NamesOfFragment.BIKE_TYPE
+        _miAppendManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
+        _miUpdateManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
+        _miDeleteManufacturer?.isVisible = fragmentType == NamesOfFragment.MANUFACTURER
     }
 
-    override fun showFragment(fragmentType: NamesOfFragment, student: Student?) {
-        when (fragmentType){
-            NamesOfFragment.FACULTY ->{
+    override fun showFragment(fragmentType: NamesOfFragment, bikeModel: BikeModel?) {
+        when (fragmentType) {
+            NamesOfFragment.BIKE_TYPE -> {
                 supportFragmentManager
                     .beginTransaction()
-                    .replace(R.id.fcMain, FacultyFragment.getInstance())
-                    .addToBackStack("faculty")
+                    .replace(R.id.fcMain, BikeTypeFragment.getInstance())
+                    .addToBackStack("bikeType")
                     .commit()
             }
-            NamesOfFragment.GROUP ->{
+            NamesOfFragment.MANUFACTURER -> {
                 supportFragmentManager
                     .beginTransaction()
-                    .replace(R.id.fcMain, GroupFragment.newInstance())
+                    .replace(R.id.fcMain, ManufacturerFragment.getInstance())
                     .addToBackStack(null)
                     .commit()
             }
-            NamesOfFragment.STUDENT -> {
-                if (student != null)
+            NamesOfFragment.BIKE_MODEL_INPUT -> {
+                if (bikeModel != null)
                     supportFragmentManager
                         .beginTransaction()
-                        .replace(R.id.fcMain, StudentInputFragment.newInstance(student))
+                        .replace(R.id.fcMain, BikeModelInputFragment.newInstance(bikeModel))
                         .addToBackStack(null)
                         .commit()
-                }
+            }
         }
-        activeFragment=fragmentType
+        activeFragment = fragmentType
         updateMenu(fragmentType)
     }
 
