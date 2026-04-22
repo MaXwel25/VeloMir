@@ -1,6 +1,7 @@
 package com.example.list_temp
 
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
@@ -25,7 +26,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
     }
 
     private lateinit var syncManager: VeloSyncManager
-    private var currentBikeTypeId: String? = null  // ID выбранного типа велосипеда
+    private var currentBikeTypeId: String? = null      // ID выбранного типа велосипеда
+    private var currentManufacturerId: String? = null  // ID выбранного производителя
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,7 +132,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         _miAppendManufacturer?.isVisible = isManufacturer
         _miUpdateManufacturer?.isVisible = isManufacturer
         _miDeleteManufacturer?.isVisible = isManufacturer
-        // Пункты синхронизации видны всегда
         _miSyncPush?.isVisible = true
         _miSyncPull?.isVisible = true
     }
@@ -139,12 +140,12 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         val fragment = when (fragmentType) {
             NamesOfFragment.BIKE_TYPE -> BikeTypeFragment.getInstance()
             NamesOfFragment.MANUFACTURER -> {
-                // Передаём ID типа велосипеда, который должен быть установлен ранее
                 ManufacturerFragment.newInstance(currentBikeTypeId ?: "")
             }
             NamesOfFragment.BIKE_MODEL_INPUT -> {
-                bikeModel?.let { BikeModelInputFragment.newInstance(it) }
-                    ?: BikeModelInputFragment.newInstance(BikeModel())
+                val manId = bikeModel?.manufacturerId ?: currentManufacturerId ?: ""
+                Log.d("MainActivity", "showFragment BIKE_MODEL_INPUT: manId=$manId")
+                BikeModelInputFragment.newInstance(bikeModel, manId)
             }
         }
 
@@ -157,8 +158,12 @@ class MainActivity : AppCompatActivity(), MainActivityCallbacks {
         updateMenu(fragmentType)
     }
 
-    // Вызывается из BikeTypeFragment при выборе типа велосипеда
     fun setCurrentBikeTypeId(id: String) {
         currentBikeTypeId = id
+    }
+
+    fun setCurrentManufacturerId(id: String) {
+        android.util.Log.d("MainActivity", "setCurrentManufacturerId: $id")
+        currentManufacturerId = id
     }
 }

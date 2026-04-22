@@ -54,11 +54,18 @@ class ManufacturerFragment : Fragment(), MainActivity.Edit {
     }
 
     private fun setupViewPager(manufacturers: List<Manufacturer>) {
+        // 1. Очищаем слушатель и вкладки
+        binding.tlManufacturer.clearOnTabSelectedListeners()
         binding.tlManufacturer.removeAllTabs()
+
+        if (manufacturers.isEmpty()) return
+
+        // 2. Добавляем вкладки
         manufacturers.forEach { man ->
             binding.tlManufacturer.addTab(binding.tlManufacturer.newTab().setText(man.name))
         }
 
+        // 3. Настраиваем адаптер и связываем TabLayout с ViewPager
         val adapter = ManufacturerPageAdapter(requireActivity(), manufacturers)
         binding.vpManufacturer.adapter = adapter
 
@@ -66,17 +73,21 @@ class ManufacturerFragment : Fragment(), MainActivity.Edit {
             tab.text = manufacturers[pos].name
         }.attach()
 
-        // установка текущего выбранного производителя
-        viewModel.currentManufacturer.value?.let { current ->
-            val index = manufacturers.indexOfFirst { it.id == current.id }
-            if (index >= 0) {
-                binding.tlManufacturer.selectTab(binding.tlManufacturer.getTabAt(index))
-            }
-        }
+        // 4. Выбираем нужную вкладку (без слушателя)
+        val selectedIndex = viewModel.currentManufacturer.value?.let { current ->
+            manufacturers.indexOfFirst { it.id == current.id }.takeIf { it >= 0 }
+        } ?: 0
 
+        // Выбираем вкладку, не вызывая onTabSelected
+        binding.tlManufacturer.selectTab(binding.tlManufacturer.getTabAt(selectedIndex), true)
+
+        // 5. Добавляем слушатель только после выбора
         binding.tlManufacturer.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                viewModel.setCurrentManufacturer(manufacturers[tab.position])
+                val position = tab.position
+                if (position < manufacturers.size) {
+                    viewModel.setCurrentManufacturer(manufacturers[position])
+                }
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}

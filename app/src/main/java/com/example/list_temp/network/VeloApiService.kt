@@ -48,7 +48,7 @@ interface VeloApiService {
     suspend fun deleteModel(@Path("id") id: String)
 
     // полная синхронизация (отправка всех данных на сервер)
-    @POST("com/example/list_temp/sync/all")
+    @POST("sync/all")
     suspend fun syncAll(@Body data: SyncData): SyncResponse
 }
 

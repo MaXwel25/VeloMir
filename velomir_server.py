@@ -1,9 +1,16 @@
 # velomir_server.py
+import uuid
+import os
+import warnings
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-import uuid
-import os
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
+
+warnings.filterwarnings("ignore", category=sa_exc.RemovedIn20Warning)
+
 
 app = Flask(__name__)
 CORS(app)
@@ -14,13 +21,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 've
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- Модели данных (аналогичны Kotlin-классам) ---
 
+
+# --- Модели данных ---
 class BikeType(db.Model):
     __tablename__ = 'bike_types'
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(100), nullable=False)
-    # Связь с производителями (один ко многим)
     manufacturers = db.relationship('Manufacturer', backref='bike_type', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
@@ -31,11 +38,10 @@ class Manufacturer(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(100), nullable=False)
     bike_type_id = db.Column(db.String(36), db.ForeignKey('bike_types.id'), nullable=False)
-    # Связь с моделями
     models = db.relationship('BikeModel', backref='manufacturer', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
-        return {'id': self.id, 'name': self.name, 'bikeTypeID': self.bike_type_id}
+        return {'id': self.id, 'name': self.name, 'bikeTypeId': self.bike_type_id}
 
 class BikeModel(db.Model):
     __tablename__ = 'bike_models'
@@ -49,12 +55,17 @@ class BikeModel(db.Model):
             'id': self.id,
             'name': self.name,
             'phone': self.phone,
-            'manufacturerID': self.manufacturer_id
+            'manufacturerId': self.manufacturer_id
         }
 
-# --- Создание таблиц (выполняется один раз при старте) ---
 with app.app_context():
     db.create_all()
+
+    @event.listens_for(db.engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 # --- API эндпоинты ---
 
@@ -86,7 +97,6 @@ def delete_bike_type(type_id):
     db.session.commit()
     return '', 204
 
-# --- Производители (только для конкретного типа) ---
 @app.route('/bike-types/<type_id>/manufacturers', methods=['GET'])
 def get_manufacturers_by_type(type_id):
     manufacturers = Manufacturer.query.filter_by(bike_type_id=type_id).all()
@@ -95,7 +105,7 @@ def get_manufacturers_by_type(type_id):
 @app.route('/manufacturers', methods=['POST'])
 def add_manufacturer():
     data = request.json
-    new_man = Manufacturer(name=data['name'], bike_type_id=data['bikeTypeID'])
+    new_man = Manufacturer(name=data['name'], bike_type_id=data['bikeTypeId'])
     db.session.add(new_man)
     db.session.commit()
     return jsonify(new_man.to_dict()), 201
@@ -115,7 +125,6 @@ def delete_manufacturer(man_id):
     db.session.commit()
     return '', 204
 
-# --- Модели (для конкретного производителя) ---
 @app.route('/manufacturers/<man_id>/models', methods=['GET'])
 def get_models_by_manufacturer(man_id):
     models = BikeModel.query.filter_by(manufacturer_id=man_id).all()
@@ -127,7 +136,7 @@ def add_model():
     new_model = BikeModel(
         name=data['name'],
         phone=data.get('phone', ''),
-        manufacturer_id=data['manufacturerID']
+        manufacturer_id=data['manufacturerId']
     )
     db.session.add(new_model)
     db.session.commit()
@@ -149,28 +158,38 @@ def delete_model(model_id):
     db.session.commit()
     return '', 204
 
+# --- Получение всех производителей (для синхронизации) ---
+@app.route('/manufacturers', methods=['GET'])
+def get_all_manufacturers():
+    manufacturers = Manufacturer.query.all()
+    return jsonify([m.to_dict() for m in manufacturers])
+
+# --- Получение всех моделей (для синхронизации) ---
+@app.route('/models', methods=['GET'])
+def get_all_models():
+    models = BikeModel.query.all()
+    return jsonify([m.to_dict() for m in models])
+
 # --- Синхронизация (полное обновление всех данных) ---
 @app.route('/sync/all', methods=['POST'])
 def sync_all():
-    """
-    Принимает JSON со всеми типами, производителями и моделями.
-    Полностью заменяет содержимое базы данных.
-    """
     data = request.json
-    # Удаляем все существующие записи (каскадно удалятся производители и модели)
-    BikeType.query.delete()
+    # Удаляем все существующие записи через ORM для каскадного удаления
+    for bike_type in BikeType.query.all():
+        db.session.delete(bike_type)
+    db.session.flush()  # Применяем удаление до вставки новых
     for type_data in data.get('bikeTypes', []):
         bike_type = BikeType(id=type_data['id'], name=type_data['name'])
         db.session.add(bike_type)
     for man_data in data.get('manufacturers', []):
-        man = Manufacturer(id=man_data['id'], name=man_data['name'], bike_type_id=man_data['bikeTypeID'])
+        man = Manufacturer(id=man_data['id'], name=man_data['name'], bike_type_id=man_data['bikeTypeId'])
         db.session.add(man)
     for model_data in data.get('bikeModels', []):
         model = BikeModel(
             id=model_data['id'],
             name=model_data['name'],
             phone=model_data.get('phone', ''),
-            manufacturer_id=model_data['manufacturerID']
+            manufacturer_id=model_data['manufacturerId']
         )
         db.session.add(model)
     db.session.commit()

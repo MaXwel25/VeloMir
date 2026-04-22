@@ -1,5 +1,6 @@
 package com.example.list_temp.fragments
 
+import com.example.list_temp.MainActivity
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -32,12 +33,14 @@ import kotlinx.coroutines.launch
 class BikeModelFragment : Fragment() {
 
     companion object {
-        private const val ARG_MANUFACTURER = "manufacturer"
+        private const val ARG_MANUFACTURER_ID = "manufacturer_id"
+        private const val ARG_MANUFACTURER_NAME = "manufacturer_name"
+
         fun newInstance(manufacturer: Manufacturer): BikeModelFragment {
             return BikeModelFragment().apply {
                 arguments = Bundle().apply {
-                    putString("man_id", manufacturer.id)
-                    putString("man_name", manufacturer.name)
+                    putString(ARG_MANUFACTURER_ID, manufacturer.id)
+                    putString(ARG_MANUFACTURER_NAME, manufacturer.name)
                 }
             }
         }
@@ -49,9 +52,10 @@ class BikeModelFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val id = arguments?.getString("man_id") ?: ""
-        val name = arguments?.getString("man_name") ?: ""
+        val id = arguments?.getString(ARG_MANUFACTURER_ID) ?: ""
+        val name = arguments?.getString(ARG_MANUFACTURER_NAME) ?: ""
         manufacturer = Manufacturer(id = id, name = name, bikeTypeId = "")
+        android.util.Log.d("BikeModelFragment", "onCreate: manufacturer.id=${manufacturer.id}")
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -77,6 +81,8 @@ class BikeModelFragment : Fragment() {
         }
 
         (requireActivity() as MainActivityCallbacks).newTitle("Модели ${manufacturer.name}")
+        android.util.Log.d("BikeModelFragment", "onViewCreated: manufacturer.id=${manufacturer.id}")
+        (requireActivity() as MainActivity).setCurrentManufacturerId(manufacturer.id)
     }
 
     private fun deleteDialog(model: BikeModel) {
@@ -89,8 +95,8 @@ class BikeModelFragment : Fragment() {
     }
 
     private fun editBikeModel(model: BikeModel?) {
-        // используем BikeModelInputFragment для ввода
-        val fragment = BikeModelInputFragment.newInstance(model ?: BikeModel())
+        // Для новой модели передаём null и реальный manufacturer.id
+        val fragment = BikeModelInputFragment.newInstance(model, manufacturer.id)
         (requireActivity() as MainActivityCallbacks).showFragment(NamesOfFragment.BIKE_MODEL_INPUT, model)
     }
 
@@ -156,7 +162,6 @@ class BikeModelFragment : Fragment() {
                     it.callOnClick()
                     llButtons.visibility = View.VISIBLE
                     if (model.phone.isNotBlank()) ibCall.visibility = View.VISIBLE
-                    // анимация
                     MainScope().launch {
                         val lp = llButtons.layoutParams
                         lp.width = 1
