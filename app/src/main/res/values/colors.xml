@@ -1,7 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="pink">#EF82A8</color>
-    <color name="blue">#81E4F0</color>
+    <color name="md_theme_light_primary">#0061A4</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#D1E4FF</color>
+    <color name="md_theme_light_onPrimaryContainer">#001D34</color>
+
+    <!-- Secondary – бирюзовый акцент -->
+    <color name="md_theme_light_secondary">#006B57</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#7AF6D3</color>
+    <color name="md_theme_light_onSecondaryContainer">#002117</color>
+
+    <!-- Background & Surface -->
+    <color name="md_theme_light_background">#F8FDFF</color>
+    <color name="md_theme_light_onBackground">#191C1E</color>
+    <color name="md_theme_light_surface">#F8FDFF</color>
+    <color name="md_theme_light_onSurface">#191C1E</color>
+
+    <!-- Error -->
+    <color name="md_theme_light_error">#BA1A1A</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+
+    <!-- Дополнительные цвета для кнопок, FAB и т.д. -->
+    <color name="pink">#FF4081</color>
+    <color name="white">#FFFFFF</color>
+    <color name="blue">#0061A4</color>
 </resources>
